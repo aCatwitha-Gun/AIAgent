@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from content_config import *
-from functions.get_files_info import schema_get_files_info
+
+from call_function import available_functions
 
 
 
@@ -38,17 +39,12 @@ def main():
     generate_content(client, messages, verbose)
 
 def generate_content(client, messages, verbose):
-
-    available_functions = types.Tool(
-        function_declarations=[
-            schema_get_files_info,
-        ]
-    )
-
     response = client.models.generate_content(
         model=MODEL,
         contents=messages,
-        config=types.GenerateContentConfig(tools=[available_functions], system_instruction=SYSTEM_PROMPT)
+        config=types.GenerateContentConfig(
+            tools=[available_functions], system_instruction=SYSTEM_PROMPT
+        ),
     )
     if verbose:
         print("Prompt tokens:", response.usage_metadata.prompt_token_count)
@@ -56,11 +52,11 @@ def generate_content(client, messages, verbose):
     print("Response:")
 
 
-    if response.function_calls:
-        for function_info in response.function_calls:
-            print(f"Calling function: {function_info.name}({function_info.args})")
-    else:
-        print(response.text)
+    if not response.function_calls:
+        return response.text
+    
+    for function_call_part in response.function_calls:
+        print(f"Calling function: {function_call_part.name}({function_call_part.args})")
 
 
 if __name__ == "__main__":
